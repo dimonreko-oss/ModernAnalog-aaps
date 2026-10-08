@@ -29,9 +29,19 @@
     "font-awesome": "^4.7.0"
   },
   "pebble": {
-    "displayName": "Modern Analog",
-    "uuid": "c145c802-7469-4ea9-ae04-b6721eec91ec",
+    "displayName": "Modern Analog AAPS",
+    "uuid": "f3a4024a-40bc-4545-975b-e8b5a91371a9",
     "projectType": "moddable",
+    "companionApp": {
+      "android": {
+        "url": "https://androidaps.readthedocs.io",
+        "apps": [
+          {
+            "package": "info.nightscout.androidaps"
+          }
+        ]
+      }
+    },
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [

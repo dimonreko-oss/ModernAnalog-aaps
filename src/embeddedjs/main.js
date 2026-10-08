@@ -11,6 +11,7 @@ const timeFont = new render.Font("Bitham-Bold", 42);
 const dateFont = new render.Font("Gothic-Bold", 18);
 const hourFont = new render.Font("Gothic-Bold", 18);
 const weatherFont = new render.Font("Gothic-Bold", 18);
+const aapsFont = new render.Font("Gothic-Bold", 14);  // AAPS lines are wider than the other slots
 function loadFont(name, size) {
   const font = parseBMF(new Resource(name + "-" + size + ".fnt"));
   font.bitmap = parseRLE(new Resource(name + "-" + size + "-alpha.bm4"));
@@ -48,13 +49,14 @@ const SLOT_TYPE = {
   STEPS: 3,
   HEART_RATE: 4,
   WATCH_BATTERY: 5,
-  PHONE_BATTERY: 6
+  PHONE_BATTERY: 6,
+  AAPS: 7
 };
 const DEFAULT_SETTINGS = {
   TOP_LEFT_TYPE: SLOT_TYPE.WEATHER,
   TOP_RIGHT_TYPE: SLOT_TYPE.HEALTH,
   BOTTOM_LEFT_TYPE: SLOT_TYPE.WATCH_BATTERY,
-  BOTTOM_RIGHT_TYPE: SLOT_TYPE.PHONE_BATTERY,
+  BOTTOM_RIGHT_TYPE: SLOT_TYPE.AAPS,
   TEMPERATURE_UNIT: 0,
   TIME_FORMAT: 0,
   COLOR_BACKGROUND: 0x000000,
@@ -77,6 +79,9 @@ let drawPending = false;
 let phoneRequestSent = false;
 let settings = {};
 let phoneConnected = Boolean(watch.connected.app);
+// AAPS display from aaps_link (C): bg|trend|delta|iob|cob|age_min, display only
+let aapsText = "---|||--|--|-1";
+let aaps = aapsText.split("|");
 
 Object.keys(DEFAULT_SETTINGS).forEach(key => settings[key] = DEFAULT_SETTINGS[key]);
 const cachedWeather = loadJSON(WEATHER_STORAGE_KEY);
@@ -112,17 +117,22 @@ function sanitizeColor(value, fallback) {
 }
 
 function sanitizeSettings() {
-  if (Number(settings.TOP_LEFT_TYPE) < SLOT_TYPE.WEATHER ||
-      Number(settings.TOP_LEFT_TYPE) > SLOT_TYPE.HEART_RATE)
+  // The AAPS slot is allowed in every corner
+  if (Number(settings.TOP_LEFT_TYPE) !== SLOT_TYPE.AAPS &&
+      (Number(settings.TOP_LEFT_TYPE) < SLOT_TYPE.WEATHER ||
+       Number(settings.TOP_LEFT_TYPE) > SLOT_TYPE.HEART_RATE))
     settings.TOP_LEFT_TYPE = DEFAULT_SETTINGS.TOP_LEFT_TYPE;
-  if (Number(settings.TOP_RIGHT_TYPE) < SLOT_TYPE.WEATHER ||
-      Number(settings.TOP_RIGHT_TYPE) > SLOT_TYPE.HEART_RATE)
+  if (Number(settings.TOP_RIGHT_TYPE) !== SLOT_TYPE.AAPS &&
+      (Number(settings.TOP_RIGHT_TYPE) < SLOT_TYPE.WEATHER ||
+       Number(settings.TOP_RIGHT_TYPE) > SLOT_TYPE.HEART_RATE))
     settings.TOP_RIGHT_TYPE = DEFAULT_SETTINGS.TOP_RIGHT_TYPE;
-  if (Number(settings.BOTTOM_LEFT_TYPE) < SLOT_TYPE.WATCH_BATTERY ||
-      Number(settings.BOTTOM_LEFT_TYPE) > SLOT_TYPE.PHONE_BATTERY)
+  if (Number(settings.BOTTOM_LEFT_TYPE) !== SLOT_TYPE.AAPS &&
+      (Number(settings.BOTTOM_LEFT_TYPE) < SLOT_TYPE.WATCH_BATTERY ||
+       Number(settings.BOTTOM_LEFT_TYPE) > SLOT_TYPE.PHONE_BATTERY))
     settings.BOTTOM_LEFT_TYPE = DEFAULT_SETTINGS.BOTTOM_LEFT_TYPE;
-  if (Number(settings.BOTTOM_RIGHT_TYPE) < SLOT_TYPE.WATCH_BATTERY ||
-      Number(settings.BOTTOM_RIGHT_TYPE) > SLOT_TYPE.PHONE_BATTERY)
+  if (Number(settings.BOTTOM_RIGHT_TYPE) !== SLOT_TYPE.AAPS &&
+      (Number(settings.BOTTOM_RIGHT_TYPE) < SLOT_TYPE.WATCH_BATTERY ||
+       Number(settings.BOTTOM_RIGHT_TYPE) > SLOT_TYPE.PHONE_BATTERY))
     settings.BOTTOM_RIGHT_TYPE = DEFAULT_SETTINGS.BOTTOM_RIGHT_TYPE;
   if (Number(settings.TEMPERATURE_UNIT) < 0 || Number(settings.TEMPERATURE_UNIT) > 2)
     settings.TEMPERATURE_UNIT = DEFAULT_SETTINGS.TEMPERATURE_UNIT;
@@ -183,6 +193,23 @@ function refreshHealth() {
   catch (error) {
     stepCount = -1;
     heartRate = -1;
+  }
+}
+
+// Reads the AAPS values kept by aaps_link; true when they changed.
+function refreshAaps() {
+  try {
+    // The native string points at a C buffer that the next call rewrites:
+    // split and join build copies, so nothing keeps that buffer.
+    const parts = String(Natives.aaps_display_text()).split("|");
+    const text = parts.join("|");
+    if (text === aapsText) return false;
+    aapsText = text;
+    aaps = parts;
+    return true;
+  }
+  catch (error) {
+    return false;
   }
 }
 
@@ -357,6 +384,21 @@ function drawSlot(type, left, bottom, color, accentColor, icons) {
   else if (type === SLOT_TYPE.HEART_RATE) {
     metric(heartRate > 0 ? String(heartRate) : "--", "B", singleY, 0, accentColor);
   }
+  else if (type === SLOT_TYPE.AAPS) {
+    // Text only: the icon fonts have no glyphs for it. aaps_link gives "---" after 15 min.
+    const age = Number(aaps[5]);
+    const line1 = aaps[0] + (aaps[1] ? " " + aaps[1] : "") +
+      (age > 5 ? " " + age + "m" : (aaps[2] ? " " + aaps[2] : ""));
+    // About 60 px between this slot's edge and the other slot's content (battery bar, steps):
+    // drop the unit when the line is wider than that.
+    let line2 = (aaps[3] === "--" ? "--" : aaps[3] + "U") + " " + aaps[4];
+    if (render.getTextWidth(line2, aapsFont) > 60) line2 = aaps[3] + " " + aaps[4];
+    // Grow toward the centre, as metric() does, so the text stays clear of the hour numbers
+    [[line1, primaryY], [line2, secondaryY]].forEach(([text, y]) => {
+      const x = left ? anchorX - 8 : anchorX + 8 - render.getTextWidth(text, aapsFont);
+      render.drawText(text, aapsFont, color, x, y);
+    });
+  }
   else if (type === SLOT_TYPE.WATCH_BATTERY || type === SLOT_TYPE.PHONE_BATTERY) {
     const phone = type === SLOT_TYPE.PHONE_BATTERY;
     const character = phone ? (phoneConnected ? "E" : "B") : "A";
@@ -444,6 +486,8 @@ refreshHealth();
 watch.addEventListener("minutechange", event => {
   watchPercent = batteryPercent(battery.sample().percent);
   refreshHealth();
+  refreshAaps();
+  requestPhoneData(message);
   draw(event);
 });
 watch.addEventListener("connected", () => {
@@ -457,7 +501,8 @@ const message = new Message({
   // A full settings update is comfortably below 512 bytes, while the watch
   // only sends a single integer request. Avoid Alloy's 8.2 KB maximum buffers.
   input: 512,
-  output: 64,
+  // 160, not 64: aaps_link shares this outbox and needs 159 bytes for a full hour of steps/HR
+  output: 160,
   keys: MESSAGE_KEYS,
   onReadable() {
     let settingsChanged = false;
@@ -487,8 +532,30 @@ const message = new Message({
     requestDraw();
   },
   onWritable() {
-    if (phoneRequestSent) return;
-    phoneRequestSent = true;
-    this.write(new Map([["REQUEST_PHONE_DATA", 1]]));
+    requestPhoneData(this);
   }
 });
+
+// write() throws while an aaps_link snapshot holds the outbox. An exception in
+// onWritable would stop the face, so catch it and try again at the next minute.
+function requestPhoneData(target) {
+  if (phoneRequestSent) return;
+  try {
+    target.write(new Map([["REQUEST_PHONE_DATA", 1]]));
+    phoneRequestSent = true;
+  }
+  catch (error) {
+  }
+}
+
+// After new Message(): the link must find AppMessage already open (see aaps_link README)
+try {
+  Natives.aaps_link_init();
+}
+catch (error) {
+}
+refreshAaps();
+// The link has no callback into JS, so look for new AAPS values every 30 s
+setInterval(() => {
+  if (refreshAaps()) requestDraw();
+}, 30000);

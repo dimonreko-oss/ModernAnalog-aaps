@@ -4,12 +4,14 @@ var TOP_SLOT_OPTIONS = [
   { label: 'Weather', value: 1 },
   { label: 'Health (heart + steps)', value: 2 },
   { label: 'Steps', value: 3 },
-  { label: 'Heart rate', value: 4 }
+  { label: 'Heart rate', value: 4 },
+  { label: 'AAPS (glucose, IOB, COB)', value: 7 }
 ];
 
 var BOTTOM_SLOT_OPTIONS = [
   { label: 'Watch battery', value: 5 },
-  { label: 'Phone battery', value: 6 }
+  { label: 'Phone battery', value: 6 },
+  { label: 'AAPS (glucose, IOB, COB)', value: 7 }
 ];
 
 var TEMPERATURE_UNIT_OPTIONS = [
@@ -27,7 +29,7 @@ var DEFAULTS = {
   TOP_LEFT_TYPE: 1,
   TOP_RIGHT_TYPE: 2,
   BOTTOM_LEFT_TYPE: 5,
-  BOTTOM_RIGHT_TYPE: 6,
+  BOTTOM_RIGHT_TYPE: 7,
   TEMPERATURE_UNIT: 0,
   TIME_FORMAT: 0,
   COLOR_BACKGROUND: '000000',

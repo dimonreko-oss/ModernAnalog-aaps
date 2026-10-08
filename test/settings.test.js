@@ -30,6 +30,20 @@ test('sanitizeSettings accepts supported slots and normalized colors', function(
   assert.equal(result.COLOR_TEXT, '123456');
 });
 
+test('sanitizeSettings accepts the AAPS slot in every corner', function() {
+  var result = settings.sanitizeSettings({
+    TOP_LEFT_TYPE: 7,
+    TOP_RIGHT_TYPE: '7',
+    BOTTOM_LEFT_TYPE: 7,
+    BOTTOM_RIGHT_TYPE: '7'
+  });
+
+  assert.equal(result.TOP_LEFT_TYPE, 7);
+  assert.equal(result.TOP_RIGHT_TYPE, 7);
+  assert.equal(result.BOTTOM_LEFT_TYPE, 7);
+  assert.equal(result.BOTTOM_RIGHT_TYPE, 7);
+});
+
 test('sanitizeSettings rejects unsupported values and unknown keys', function() {
   var result = settings.sanitizeSettings({
     TOP_LEFT_TYPE: 99,

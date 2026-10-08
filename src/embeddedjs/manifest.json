@@ -17,6 +17,14 @@
       "health_heart_rate": {
         "arguments": [],
         "returns": "int32_t"
+      },
+      "aaps_link_init": {
+        "arguments": [],
+        "returns": "void"
+      },
+      "aaps_display_text": {
+        "arguments": [],
+        "returns": "const char*"
       }
     }
   },

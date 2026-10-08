@@ -1,5 +1,18 @@
 # Modern Analog
 
+> **This copy (Modern Analog AAPS)** is an unofficial, private DIY copy of
+> [EladDv/ModernAnalog](https://github.com/EladDv/ModernAnalog) (Apache-2.0), not made or endorsed by
+> its author, by Core Devices or by the AndroidAPS project. It adds the AAPS link
+> (`src/c/aaps_link.c`, started from `main.js` through the FFI): the face sends the watch's steps and
+> heart rate to an AAPS fork with a Pebble plugin, and a new corner type "AAPS (glucose, IOB, COB)"
+> shows what AAPS sends back. By default it is in the bottom-right corner, in place of the phone
+> battery. Display only: nothing on the watch can make AAPS act. Not a medical device. It has its
+> own UUID, so it installs next to the original face.
+>
+> Files changed from the original: `package.json`, `src/c/health_bridge.c`,
+> `src/embeddedjs/main.js`, `src/embeddedjs/manifest.json`, `src/pkjs/settings.js`,
+> `test/settings.test.js`. Added: `src/c/aaps_link.c`, `src/c/aaps_link.h`.
+
 Modern Analog is a configurable hybrid digital watchface for Pebble Time 2. It keeps the visual rhythm of a classic clock face without using hands: the current hour is highlighted in white, while a red minute rim advances around the edge of the display.
 
 ## Preview
@@ -117,3 +130,7 @@ Bug reports and focused improvements are welcome. See [CONTRIBUTING.md](CONTRIBU
 ## License
 
 Copyright 2026 EladDV. Licensed under the [Apache License 2.0](LICENSE).
+
+In this copy, `src/c/aaps_link.c` and `src/c/aaps_link.h` come from the private aaps-pebble
+repository; their author provides them here under the MIT licence. The changes to the original
+files listed at the top are under the Apache License 2.0, like the rest of the face.
